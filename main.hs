@@ -129,9 +129,33 @@ lunarDayFromSolar (dd, mm, yy, timeZone) = dayNumber - monthStart + 1 where
   k = floor ((fromIntegral dayNumber - 2415021.076998695) / 29.530588853)
   monthStart = getLunarMonthStart (dd, mm, yy, timeZone)
 
-solarToLunar :: Int -> Int -> Int -> Int -> (Int, Int, Int, Int)
-solarToLunar dd mm yy timeZone = (1, 2, 3, 4)
+lunarMonthFactorsFromDate :: (Int, Int, Int, Int) -> (Int, Int)
+lunarMonthFactorsFromDate (dd, mm, yy, timeZone)
+  | a11 >= monthStart = (getLunarMonthEleven (yy - 1) timeZone, a11)
+  | otherwise = (a11, getLunarMonthEleven (yy + 1) timeZone)
+    where
+      monthStart = getLunarMonthStart (dd, mm, yy, timeZone)
+      a11 = getLunarMonthEleven yy timeZone
+
+getLunarMonthWithFactors :: (Int, Int, Int, Int) -> Int
+getLunarMonthWithFactors (dd, mm, yy, timeZone)
+  | b11 - a11 > 365 && diff >= leapMonthDiff = diff + 10
+  | otherwise = diff + 11
+    where
+      monthStart = getLunarMonthStart (dd, mm, yy, timeZone)
+      diff = floor (fromIntegral (monthStart - a11) / 29)
+      leapMonthDiff = getLeapMonthOffset a11 timeZone
+      (a11, b11) = lunarMonthFactorsFromDate (dd, mm, yy, timeZone)
+
+lunarMonthFromSolar :: (Int, Int, Int, Int) -> Int
+lunarMonthFromSolar (dd, mm, yy, timeZone)
+  | lunarMonth > 12 = lunarMonth - 12
+  | otherwise = lunarMonth
+    where
+      lunarMonth = getLunarMonthWithFactors (dd, mm, yy, timeZone)
+
+solarToLunar :: (Int, Int, Int, Int) -> (Int, Int, Int, Int)
+solarToLunar (dd, mm, yy, timeZone) = (1, 2, 3, 4)
 
 lunarToSolar :: Int -> Int -> Int -> Int -> Int -> (Int, Int, Int)
 lunarToSolar lunarDay lunarMonth lunarYear lunarLeap timeZone = (1, 2, 3)
-
