@@ -3,8 +3,8 @@ module Halunar
   , calculateLunarDateFromDate
   ) where
 
-calculateJuliusDayFromDate :: Int -> Int -> Int -> Int
-calculateJuliusDayFromDate day month year =
+calculateJuliusDayFromDate :: (Int, Int, Int) -> Int
+calculateJuliusDayFromDate (day, month, year) =
   day + ((153 * m + 2) `div` 5) + 365 * y + (y `div` 4) - (y `div` 100) + (y `div` 400) - 32045
     where
       a = (14 - month) `div` 12
@@ -78,8 +78,8 @@ calculateNewMoonDay numberOfMonths timeZone =
       jd1 = jd2 + 0.00033 * sin ((166.56 + 132.87 * t1 - 0.009173 * t2) * dr)
       jdNewMoon = jd1 + c - deltaT
 
-getSunLongitude :: Int -> Int -> Int
-getSunLongitude juliusDay timeZone =
+calculateSunLongitude :: Int -> Int -> Int
+calculateSunLongitude juliusDay timeZone =
   floor (l / pi * 6)
     where
       dr = pi / 180
@@ -98,10 +98,10 @@ calculateLunarMonthEleven year timeZone
   | sunLng >= 9 = calculateNewMoonDay (numberOfMonths - 1) timeZone
   | otherwise = calculateNewMoonDay numberOfMonths timeZone
     where
-      off = calculateJuliusDayFromDate 31 12 year - 2415021
+      off = calculateJuliusDayFromDate (31, 12, year) - 2415021
       numberOfMonths = floor (fromIntegral off / 29.530588853)
       nm = calculateNewMoonDay numberOfMonths timeZone
-      sunLng = getSunLongitude nm timeZone
+      sunLng = calculateSunLongitude nm timeZone
 
 calculateLeapMonthOffsetFromFactors :: Int -> Int -> Int -> Int -> Int -> Int
 calculateLeapMonthOffsetFromFactors m11 timeZone last arc index
@@ -113,7 +113,7 @@ calculateLeapMonthOffsetFromFactors m11 timeZone last arc index
         floor ((fromIntegral m11 - 2415021.076998695) / 29.530588853 + 0.5)
       tmpLast = last
       tmpArc =
-        getSunLongitude (calculateNewMoonDay (numberOfMonths + index) timeZone) timeZone
+        calculateSunLongitude (calculateNewMoonDay (numberOfMonths + index) timeZone) timeZone
       tmpIndex = tmpIndex + 1
 
 calculateLeapMonthOffset :: Int -> Int -> Int
@@ -122,7 +122,7 @@ calculateLeapMonthOffset m11 timeZone =
     numberOfMonths =
       floor ((fromIntegral m11 - 2415021.076998695) / 29.530588853 + 0.5)
     arc =
-      getSunLongitude (calculateNewMoonDay (numberOfMonths + 1)  timeZone) timeZone
+      calculateSunLongitude (calculateNewMoonDay (numberOfMonths + 1)  timeZone) timeZone
     last = 0
     index = 1
 
@@ -131,7 +131,7 @@ calculateLunarMonthStartAt (day, month, year, timeZone)
   | lMonthStartAt > dayNumber = calculateNewMoonDay numberOfMonths timeZone
   | otherwise = calculateNewMoonDay (numberOfMonths + 1) timeZone
     where
-      dayNumber = calculateJuliusDayFromDate day month year
+      dayNumber = calculateJuliusDayFromDate (day, month, year)
       numberOfMonths =
         floor ((fromIntegral dayNumber - 2415021.076998695) / 29.530588853)
       lMonthStartAt = calculateNewMoonDay (numberOfMonths + 1) timeZone
@@ -139,7 +139,7 @@ calculateLunarMonthStartAt (day, month, year, timeZone)
 calculateLunarDayFromDate :: (Int, Int, Int, Int) -> Int
 calculateLunarDayFromDate (day, month, year, timeZone) =
   dayNumber - lMonthStartAt + 1 where
-    dayNumber = calculateJuliusDayFromDate day month year
+    dayNumber = calculateJuliusDayFromDate (day, month, year)
     numberOfMonths =
       floor ((fromIntegral dayNumber - 2415021.076998695) / 29.530588853)
     lMonthStartAt = calculateLunarMonthStartAt (day, month, year, timeZone)
