@@ -114,6 +114,21 @@ getLeapMonthOffset m11 timeZone = getLeapMonthOffsetFromFactors m11 timeZone las
   last = 0
   index = 1
 
+getLunarMonthStart :: (Int, Int, Int, Int) -> Int
+getLunarMonthStart (dd, mm, yy, timeZone)
+  | monthStart > dayNumber = getNewMoonDay k timeZone
+  | otherwise = getNewMoonDay (k + 1) timeZone
+    where
+      dayNumber = jdFromDate dd mm yy
+      k = floor ((fromIntegral dayNumber - 2415021.076998695) / 29.530588853)
+      monthStart = getNewMoonDay (k + 1) timeZone
+
+lunarDayFromSolar :: (Int, Int, Int, Int) -> Int
+lunarDayFromSolar (dd, mm, yy, timeZone) = dayNumber - monthStart + 1 where
+  dayNumber = jdFromDate dd mm yy
+  k = floor ((fromIntegral dayNumber - 2415021.076998695) / 29.530588853)
+  monthStart = getLunarMonthStart (dd, mm, yy, timeZone)
+
 solarToLunar :: Int -> Int -> Int -> Int -> (Int, Int, Int, Int)
 solarToLunar dd mm yy timeZone = (1, 2, 3, 4)
 
