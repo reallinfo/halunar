@@ -97,13 +97,26 @@ getLunarMonthEleven yy timeZone
       nm = getNewMoonDay k timeZone
       sunLng = getSunLongitude nm timeZone
 
-getLeapMonthOffset :: Int -> Int -> Int -> Int -> Int
-getLeapMonthOffset m11 timeZone last arc index
-  | arc /= last && index < 14 = getLeapMonthOffset m11 timeZone last1 arc1 index1
+getLeapMonthOffsetFromFactors :: Int -> Int -> Int -> Int -> Int -> Int
+getLeapMonthOffsetFromFactors m11 timeZone last arc index
+  | arc /= last && index < 14 = getLeapMonthOffsetFromFactors m11 timeZone tmpLast tmpArc tmpIndex
   | otherwise = index - 1
     where
-      k = floor (fromIntegral m11 - 2415021.076998695) / 29.530588853 + 0.5
-      last1 = last
-      index1 = index + 1
-      arc1 = getSunLongitude (getNewMoonDay (k + index) timeZone) timeZone
+      k = floor ((fromIntegral m11 - 2415021.076998695) / 29.530588853 + 0.5)
+      tmpLast = last
+      tmpArc = getSunLongitude (getNewMoonDay (k + index) timeZone) timeZone
+      tmpIndex = tmpIndex + 1
+
+getLeapMonthOffset :: Int -> Int -> Int
+getLeapMonthOffset m11 timeZone = getLeapMonthOffsetFromFactors m11 timeZone last arc index where
+  k = floor ((fromIntegral m11 - 2415021.076998695) / 29.530588853 + 0.5)
+  arc = getSunLongitude (getNewMoonDay (k + 1)  timeZone) timeZone
+  last = 0
+  index = 1
+
+solarToLunar :: Int -> Int -> Int -> Int -> (Int, Int, Int, Int)
+solarToLunar dd mm yy timeZone = (1, 2, 3, 4)
+
+lunarToSolar :: Int -> Int -> Int -> Int -> Int -> (Int, Int, Int)
+lunarToSolar lunarDay lunarMonth lunarYear lunarLeap timeZone = (1, 2, 3)
 
