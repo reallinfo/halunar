@@ -129,8 +129,8 @@ lunarDayFromSolar (dd, mm, yy, timeZone) = dayNumber - monthStart + 1 where
   k = floor ((fromIntegral dayNumber - 2415021.076998695) / 29.530588853)
   monthStart = getLunarMonthStart (dd, mm, yy, timeZone)
 
-lunarMonthFactorsFromDate :: (Int, Int, Int, Int) -> (Int, Int)
-lunarMonthFactorsFromDate (dd, mm, yy, timeZone)
+lunarFactorsFromDate :: (Int, Int, Int, Int) -> (Int, Int)
+lunarFactorsFromDate (dd, mm, yy, timeZone)
   | a11 >= monthStart = (getLunarMonthEleven (yy - 1) timeZone, a11)
   | otherwise = (a11, getLunarMonthEleven (yy + 1) timeZone)
     where
@@ -145,7 +145,7 @@ getLunarMonthWithFactors (dd, mm, yy, timeZone)
       monthStart = getLunarMonthStart (dd, mm, yy, timeZone)
       diff = floor (fromIntegral (monthStart - a11) / 29)
       leapMonthDiff = getLeapMonthOffset a11 timeZone
-      (a11, b11) = lunarMonthFactorsFromDate (dd, mm, yy, timeZone)
+      (a11, b11) = lunarFactorsFromDate (dd, mm, yy, timeZone)
 
 lunarMonthFromSolar :: (Int, Int, Int, Int) -> Int
 lunarMonthFromSolar (dd, mm, yy, timeZone)
@@ -154,8 +154,31 @@ lunarMonthFromSolar (dd, mm, yy, timeZone)
     where
       lunarMonth = getLunarMonthWithFactors (dd, mm, yy, timeZone)
 
-solarToLunar :: (Int, Int, Int, Int) -> (Int, Int, Int, Int)
-solarToLunar (dd, mm, yy, timeZone) = (1, 2, 3, 4)
+getLunarYearWithFactors :: (Int, Int, Int, Int) -> Int
+getLunarYearWithFactors (dd, mm, yy, timeZone)
+  | a11 >= monthStart = yy
+  | otherwise = yy + 1
+    where
+      monthStart = getLunarMonthStart (dd, mm, yy, timeZone)
+      a11 = getLunarMonthEleven yy timeZone
+
+lunarYearFromSolar :: (Int, Int, Int, Int) -> Int
+lunarYearFromSolar (dd, mm, yy, timeZone)
+  | lunarMonth >= 11 && diff < 4 = lunarYear - 1
+  | otherwise = lunarYear
+    where
+      lunarMonth = lunarMonthFromSolar (dd, mm, yy, timeZone)
+      monthStart = getLunarMonthStart (dd, mm, yy, timeZone)
+      diff = floor (fromIntegral (monthStart - a11) / 29)
+      lunarYear = getLunarYearWithFactors (dd, mm, yy, timeZone)
+      (a11, b11) = lunarFactorsFromDate (dd, mm, yy, timeZone)
+
+solarToLunar :: (Int, Int, Int, Int) -> (Int, Int, Int, Bool)
+solarToLunar (dd, mm, yy, timeZone) = (day, month, year, leap) where
+  day = lunarDayFromSolar (dd, mm, yy, timeZone)
+  month = lunarMonthFromSolar (dd, mm, yy, timeZone)
+  year = lunarYearFromSolar (dd, mm, yy, timeZone)
+  leap = False
 
 lunarToSolar :: Int -> Int -> Int -> Int -> Int -> (Int, Int, Int)
 lunarToSolar lunarDay lunarMonth lunarYear lunarLeap timeZone = (1, 2, 3)
