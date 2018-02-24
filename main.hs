@@ -173,12 +173,46 @@ lunarYearFromSolar (dd, mm, yy, timeZone)
       lunarYear = getLunarYearWithFactors (dd, mm, yy, timeZone)
       (a11, b11) = lunarFactorsFromDate (dd, mm, yy, timeZone)
 
-solarToLunar :: (Int, Int, Int, Int) -> (Int, Int, Int, Bool)
-solarToLunar (dd, mm, yy, timeZone) = (day, month, year, leap) where
+isLunarLeapYear :: Int -> Bool
+isLunarLeapYear yy = (yy `mod` 19) `elem` [0, 3, 6, 9, 11, 14, 17]
+
+convertSolarToLunar :: (Int, Int, Int, Int) -> (Int, Int, Int)
+convertSolarToLunar (dd, mm, yy, timeZone) = (day, month, year) where
   day = lunarDayFromSolar (dd, mm, yy, timeZone)
   month = lunarMonthFromSolar (dd, mm, yy, timeZone)
   year = lunarYearFromSolar (dd, mm, yy, timeZone)
-  leap = False
 
-lunarToSolar :: Int -> Int -> Int -> Int -> Int -> (Int, Int, Int)
-lunarToSolar lunarDay lunarMonth lunarYear lunarLeap timeZone = (1, 2, 3)
+calculateLunarFactorsFromLunarDate :: (Int, Int, Int, Int) -> (Int, Int)
+calculateLunarFactorsFromLunarDate (lDay, lMonth, lYear, timeZone)
+  | lMonth < 11 =
+    (getLunarMonthEleven (lYear - 1) timeZone, getLunarMonthEleven lYear timeZone)
+  | otherwise =
+    (getLunarMonthEleven lYear timeZone, getLunarMonthEleven (lYear + 1) timeZone)
+
+calculateLunarSolarOffsetByMonth :: Int -> Int
+calculateLunarSolarOffsetByMonth lMonth
+  | offset < 0 = offset + 12
+  | otherwise = offset
+    where
+      offset = lMonth - 11
+
+calculateLunarSolarOffset :: (Int, Int, Int, Int) -> Int
+calculateLunarSolarOffset (lDay, lMonth, lYear, timeZone)
+  | b11 - a11 > 365 && (isLunarLeapYear lYear || offset >= leapOffset) =
+    offset + 1
+  | otherwise = offset
+    where
+      offset = calculateLunarSolarOffsetByMonth lMonth
+      leapOffset = getLeapMonthOffset a11 timeZone
+      (a11, b11) =
+        calculateLunarFactorsFromLunarDate (lDay, lMonth, lYear, timeZone)
+
+convertLunarToSolar :: (Int, Int, Int, Int) -> (Int, Int, Int)
+convertLunarToSolar (lDay, lMonth, lYear, timeZone) =
+  jdToDate (monthStart + lDay - 1)
+    where
+      (a11, b11) =
+        calculateLunarFactorsFromLunarDate (lDay, lMonth, lYear, timeZone)
+      k = floor (0.5 + (fromIntegral a11 - 2415021.076998695) / 29.530588853)
+      offset = calculateLunarSolarOffset (lDay, lMonth, lYear, timeZone)
+      monthStart = getNewMoonDay (k + offset) timeZone
