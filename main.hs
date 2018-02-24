@@ -1,34 +1,35 @@
-jdFromDate :: Int -> Int -> Int -> Int
-jdFromDate dd mm yy =
-  dd + ((153 * m + 2) `div` 5) + 365 * y + (y `div` 4) - (y `div` 100) + (y `div` 400) - 32045
+calculateJuliusDayFromDate :: Int -> Int -> Int -> Int
+calculateJuliusDayFromDate day month year =
+  day + ((153 * m + 2) `div` 5) + 365 * y + (y `div` 4) - (y `div` 100) + (y `div` 400) - 32045
     where
-      a = (14 - mm) `div` 12
-      m = mm + 12 * a - 3
-      y = yy + 4800 - a
+      a = (14 - month) `div` 12
+      m = month + 12 * a - 3
+      y = year + 4800 - a
 
-jdToFactors :: Int -> (Int, Int, Int)
-jdToFactors jd
-  | jd > 2299160 = (a, b, c)
+calculateFactorsFromJuliusDay :: Int -> (Int, Int, Int)
+calculateFactorsFromJuliusDay juliusDay
+  | juliusDay > 2299160 = (a, b, c)
   | otherwise = (-1, 0, d)
     where
-      a = jd + 32044
+      a = juliusDay + 32044
       b = (4 * a + 3) `div` 146097
       c = a - ((b * 146097) `div` 4)
-      d = jd + 32082
+      d = juliusDay + 32082
 
-factorsToDate :: (Int, Int, Int) -> (Int, Int, Int)
-factorsToDate (a, b, c) =
+calculateDateFromFactors :: (Int, Int, Int) -> (Int, Int, Int)
+calculateDateFromFactors (a, b, c) =
   (e - ((153 * m + 2) `div` 5) + 1, m + 3 - 12 * (m `div` 10), b * 100 + d - 4800 + (m `div` 10))
       where
         d = (4 * c + 3) `div` 1461
         e = c - ((1461 * d) `div` 4)
         m = (5 * e + 2) `div` 153
 
-jdToDate :: Int -> (Int, Int, Int)
-jdToDate jd = factorsToDate (jdToFactors jd)
+calculateDateFromJuliusDay :: Int -> (Int, Int, Int)
+calculateDateFromJuliusDay juliusDay =
+  calculateDateFromFactors (calculateFactorsFromJuliusDay juliusDay)
 
 calculateT1 :: Int -> Float
-calculateT1 k = fromIntegral k / 1236.85
+calculateT1 numberOfMonths = fromIntegral numberOfMonths / 1236.85
 
 calculateDeltaT :: Float -> Float
 calculateDeltaT t1
@@ -39,11 +40,11 @@ calculateDeltaT t1
       t3 = t1 ^ 3
 
 calculateLatitude :: Int -> Float
-calculateLatitude k =
+calculateLatitude numberOfMonths =
   c + 0.0010 * sin (dr * (2 * f - mpr)) + 0.0005 * sin (dr * (2 * mpr + m))
     where
-      k1 = fromIntegral k
-      t1 = calculateT1 k
+      k1 = fromIntegral numberOfMonths
+      t1 = calculateT1 numberOfMonths
       t2 = t1 ^ 2
       t3 = t1 ^ 3
       dr = pi / 180
@@ -57,27 +58,27 @@ calculateLatitude k =
       c1 = c2 - 0.0074 * sin (dr * (m - mpr)) + 0.0004 * sin (dr * (2 * f + m))
       c = c1 - 0.0004 * sin (dr * (2 * f - m)) - 0.0006 * sin (dr * (2 * f + mpr))
 
-getNewMoonDay :: Int -> Int -> Int
-getNewMoonDay k timeZone =
+calculateNewMoonDay :: Int -> Int -> Int
+calculateNewMoonDay numberOfMonths timeZone =
   floor (jdNewMoon + 0.5 + fromIntegral timeZone / 24)
     where
-      k1 = fromIntegral k
+      k1 = fromIntegral numberOfMonths
       dr = pi / 180
-      t1 = calculateT1 k
+      t1 = calculateT1 numberOfMonths
       t2 = t1 ^ 2
       t3 = t1 ^3
       deltaT = calculateDeltaT t1
-      c = calculateLatitude k
+      c = calculateLatitude numberOfMonths
       jd2 = 2415020.75933 + 29.53058868 * k1 + 0.0001178 * t2 - 0.000000155 * t3
       jd1 = jd2 + 0.00033 * sin ((166.56 + 132.87 * t1 - 0.009173 * t2) * dr)
       jdNewMoon = jd1 + c - deltaT
 
 getSunLongitude :: Int -> Int -> Int
-getSunLongitude jd timeZone =
+getSunLongitude juliusDay timeZone =
   floor (l / pi * 6)
     where
       dr = pi / 180
-      t1 = (fromIntegral jd - 2451545.5 - fromIntegral timeZone / 24) / 36525
+      t1 = (fromIntegral juliusDay - 2451545.5 - fromIntegral timeZone / 24) / 36525
       t2 = t1 ^ 2
       m = 357.52910 + 35999.05030 * t1 - 0.0001559 * t2 - 0.00000048 * t1 * t2
       dl1 = (1.914600 - 0.004817 * t1 - 0.000014 * t2) * sin (dr * m)
@@ -87,107 +88,117 @@ getSunLongitude jd timeZone =
       l1 = l2 * dr
       l = l1 - pi * 2 * fromIntegral (floor (l1 / (pi * 2)))
 
-getLunarMonthEleven :: Int -> Int -> Int
-getLunarMonthEleven yy timeZone
-  | sunLng >= 9 = getNewMoonDay (k - 1) timeZone
-  | otherwise = getNewMoonDay k timeZone
+calculateLunarMonthEleven :: Int -> Int -> Int
+calculateLunarMonthEleven year timeZone
+  | sunLng >= 9 = calculateNewMoonDay (numberOfMonths - 1) timeZone
+  | otherwise = calculateNewMoonDay numberOfMonths timeZone
     where
-      off = jdFromDate 31 12 yy - 2415021
-      k = floor (fromIntegral off / 29.530588853)
-      nm = getNewMoonDay k timeZone
+      off = calculateJuliusDayFromDate 31 12 year - 2415021
+      numberOfMonths = floor (fromIntegral off / 29.530588853)
+      nm = calculateNewMoonDay numberOfMonths timeZone
       sunLng = getSunLongitude nm timeZone
 
-getLeapMonthOffsetFromFactors :: Int -> Int -> Int -> Int -> Int -> Int
-getLeapMonthOffsetFromFactors m11 timeZone last arc index
-  | arc /= last && index < 14 = getLeapMonthOffsetFromFactors m11 timeZone tmpLast tmpArc tmpIndex
+calculateLeapMonthOffsetFromFactors :: Int -> Int -> Int -> Int -> Int -> Int
+calculateLeapMonthOffsetFromFactors m11 timeZone last arc index
+  | arc /= last && index < 14 =
+    calculateLeapMonthOffsetFromFactors m11 timeZone tmpLast tmpArc tmpIndex
   | otherwise = index - 1
     where
-      k = floor ((fromIntegral m11 - 2415021.076998695) / 29.530588853 + 0.5)
+      numberOfMonths =
+        floor ((fromIntegral m11 - 2415021.076998695) / 29.530588853 + 0.5)
       tmpLast = last
-      tmpArc = getSunLongitude (getNewMoonDay (k + index) timeZone) timeZone
+      tmpArc =
+        getSunLongitude (calculateNewMoonDay (numberOfMonths + index) timeZone) timeZone
       tmpIndex = tmpIndex + 1
 
-getLeapMonthOffset :: Int -> Int -> Int
-getLeapMonthOffset m11 timeZone = getLeapMonthOffsetFromFactors m11 timeZone last arc index where
-  k = floor ((fromIntegral m11 - 2415021.076998695) / 29.530588853 + 0.5)
-  arc = getSunLongitude (getNewMoonDay (k + 1)  timeZone) timeZone
-  last = 0
-  index = 1
+calculateLeapMonthOffset :: Int -> Int -> Int
+calculateLeapMonthOffset m11 timeZone =
+  calculateLeapMonthOffsetFromFactors m11 timeZone last arc index where
+    numberOfMonths =
+      floor ((fromIntegral m11 - 2415021.076998695) / 29.530588853 + 0.5)
+    arc =
+      getSunLongitude (calculateNewMoonDay (numberOfMonths + 1)  timeZone) timeZone
+    last = 0
+    index = 1
 
-getLunarMonthStart :: (Int, Int, Int, Int) -> Int
-getLunarMonthStart (dd, mm, yy, timeZone)
-  | monthStart > dayNumber = getNewMoonDay k timeZone
-  | otherwise = getNewMoonDay (k + 1) timeZone
+calculateLunarMonthStartAt :: (Int, Int, Int, Int) -> Int
+calculateLunarMonthStartAt (day, month, year, timeZone)
+  | lMonthStartAt > dayNumber = calculateNewMoonDay numberOfMonths timeZone
+  | otherwise = calculateNewMoonDay (numberOfMonths + 1) timeZone
     where
-      dayNumber = jdFromDate dd mm yy
-      k = floor ((fromIntegral dayNumber - 2415021.076998695) / 29.530588853)
-      monthStart = getNewMoonDay (k + 1) timeZone
+      dayNumber = calculateJuliusDayFromDate day month year
+      numberOfMonths =
+        floor ((fromIntegral dayNumber - 2415021.076998695) / 29.530588853)
+      lMonthStartAt = calculateNewMoonDay (numberOfMonths + 1) timeZone
 
-lunarDayFromSolar :: (Int, Int, Int, Int) -> Int
-lunarDayFromSolar (dd, mm, yy, timeZone) = dayNumber - monthStart + 1 where
-  dayNumber = jdFromDate dd mm yy
-  k = floor ((fromIntegral dayNumber - 2415021.076998695) / 29.530588853)
-  monthStart = getLunarMonthStart (dd, mm, yy, timeZone)
+calculateLunarDayFromDate :: (Int, Int, Int, Int) -> Int
+calculateLunarDayFromDate (day, month, year, timeZone) =
+  dayNumber - lMonthStartAt + 1 where
+    dayNumber = calculateJuliusDayFromDate day month year
+    numberOfMonths =
+      floor ((fromIntegral dayNumber - 2415021.076998695) / 29.530588853)
+    lMonthStartAt = calculateLunarMonthStartAt (day, month, year, timeZone)
 
-lunarFactorsFromDate :: (Int, Int, Int, Int) -> (Int, Int)
-lunarFactorsFromDate (dd, mm, yy, timeZone)
-  | a11 >= monthStart = (getLunarMonthEleven (yy - 1) timeZone, a11)
-  | otherwise = (a11, getLunarMonthEleven (yy + 1) timeZone)
+calculateLunarFactorsFromDate :: (Int, Int, Int, Int) -> (Int, Int)
+calculateLunarFactorsFromDate (day, month, year, timeZone)
+  | a11 >= lMonthStartAt = (calculateLunarMonthEleven (year - 1) timeZone, a11)
+  | otherwise = (a11, calculateLunarMonthEleven (year + 1) timeZone)
     where
-      monthStart = getLunarMonthStart (dd, mm, yy, timeZone)
-      a11 = getLunarMonthEleven yy timeZone
+      lMonthStartAt = calculateLunarMonthStartAt (day, month, year, timeZone)
+      a11 = calculateLunarMonthEleven year timeZone
 
-getLunarMonthWithFactors :: (Int, Int, Int, Int) -> Int
-getLunarMonthWithFactors (dd, mm, yy, timeZone)
+calculateLunarMonthWithFactors :: (Int, Int, Int, Int) -> Int
+calculateLunarMonthWithFactors (day, month, year, timeZone)
   | b11 - a11 > 365 && diff >= leapMonthDiff = diff + 10
   | otherwise = diff + 11
     where
-      monthStart = getLunarMonthStart (dd, mm, yy, timeZone)
-      diff = floor (fromIntegral (monthStart - a11) / 29)
-      leapMonthDiff = getLeapMonthOffset a11 timeZone
-      (a11, b11) = lunarFactorsFromDate (dd, mm, yy, timeZone)
+      lMonthStartAt = calculateLunarMonthStartAt (day, month, year, timeZone)
+      diff = floor (fromIntegral (lMonthStartAt - a11) / 29)
+      leapMonthDiff = calculateLeapMonthOffset a11 timeZone
+      (a11, b11) = calculateLunarFactorsFromDate (day, month, year, timeZone)
 
-lunarMonthFromSolar :: (Int, Int, Int, Int) -> Int
-lunarMonthFromSolar (dd, mm, yy, timeZone)
-  | lunarMonth > 12 = lunarMonth - 12
-  | otherwise = lunarMonth
+calculateLunarMonthFromDate :: (Int, Int, Int, Int) -> Int
+calculateLunarMonthFromDate (day, month, year, timeZone)
+  | lMonth > 12 = lMonth - 12
+  | otherwise = lMonth
     where
-      lunarMonth = getLunarMonthWithFactors (dd, mm, yy, timeZone)
+      lMonth = calculateLunarMonthWithFactors (day, month, year, timeZone)
 
-getLunarYearWithFactors :: (Int, Int, Int, Int) -> Int
-getLunarYearWithFactors (dd, mm, yy, timeZone)
-  | a11 >= monthStart = yy
-  | otherwise = yy + 1
+calculateLunarYearWithFactors :: (Int, Int, Int, Int) -> Int
+calculateLunarYearWithFactors (day, month, year, timeZone)
+  | a11 >= lMonthStartAt = year
+  | otherwise = year + 1
     where
-      monthStart = getLunarMonthStart (dd, mm, yy, timeZone)
-      a11 = getLunarMonthEleven yy timeZone
+      lMonthStartAt = calculateLunarMonthStartAt (day, month, year, timeZone)
+      a11 = calculateLunarMonthEleven year timeZone
 
-lunarYearFromSolar :: (Int, Int, Int, Int) -> Int
-lunarYearFromSolar (dd, mm, yy, timeZone)
-  | lunarMonth >= 11 && diff < 4 = lunarYear - 1
-  | otherwise = lunarYear
+calculateLunarYearFromDate :: (Int, Int, Int, Int) -> Int
+calculateLunarYearFromDate (day, month, year, timeZone)
+  | lMonth >= 11 && diff < 4 = lYear - 1
+  | otherwise = lYear
     where
-      lunarMonth = lunarMonthFromSolar (dd, mm, yy, timeZone)
-      monthStart = getLunarMonthStart (dd, mm, yy, timeZone)
-      diff = floor (fromIntegral (monthStart - a11) / 29)
-      lunarYear = getLunarYearWithFactors (dd, mm, yy, timeZone)
-      (a11, b11) = lunarFactorsFromDate (dd, mm, yy, timeZone)
+      (a11, b11) = calculateLunarFactorsFromDate (day, month, year, timeZone)
+      diff = floor (fromIntegral (lMonthStartAt - a11) / 29)
+      lMonth = calculateLunarMonthFromDate (day, month, year, timeZone)
+      lMonthStartAt = calculateLunarMonthStartAt (day, month, year, timeZone)
+      lYear = calculateLunarYearWithFactors (day, month, year, timeZone)
 
 isLunarLeapYear :: Int -> Bool
-isLunarLeapYear yy = (yy `mod` 19) `elem` [0, 3, 6, 9, 11, 14, 17]
+isLunarLeapYear lYear = (lYear `mod` 19) `elem` [0, 3, 6, 9, 11, 14, 17]
 
-convertSolarToLunar :: (Int, Int, Int, Int) -> (Int, Int, Int)
-convertSolarToLunar (dd, mm, yy, timeZone) = (day, month, year) where
-  day = lunarDayFromSolar (dd, mm, yy, timeZone)
-  month = lunarMonthFromSolar (dd, mm, yy, timeZone)
-  year = lunarYearFromSolar (dd, mm, yy, timeZone)
+calculateLunarDateFromDate :: (Int, Int, Int, Int) -> (Int, Int, Int)
+calculateLunarDateFromDate (day, month, year, timeZone) =
+  (lDay, lMonth, lYear) where
+    lDay = calculateLunarDayFromDate (day, month, year, timeZone)
+    lMonth = calculateLunarMonthFromDate (day, month, year, timeZone)
+    lYear = calculateLunarYearFromDate (day, month, year, timeZone)
 
 calculateLunarFactorsFromLunarDate :: (Int, Int, Int, Int) -> (Int, Int)
 calculateLunarFactorsFromLunarDate (lDay, lMonth, lYear, timeZone)
   | lMonth < 11 =
-    (getLunarMonthEleven (lYear - 1) timeZone, getLunarMonthEleven lYear timeZone)
+    (calculateLunarMonthEleven (lYear - 1) timeZone, calculateLunarMonthEleven lYear timeZone)
   | otherwise =
-    (getLunarMonthEleven lYear timeZone, getLunarMonthEleven (lYear + 1) timeZone)
+    (calculateLunarMonthEleven lYear timeZone, calculateLunarMonthEleven (lYear + 1) timeZone)
 
 calculateLunarSolarOffsetByMonth :: Int -> Int
 calculateLunarSolarOffsetByMonth lMonth
@@ -203,16 +214,16 @@ calculateLunarSolarOffset (lDay, lMonth, lYear, timeZone)
   | otherwise = offset
     where
       offset = calculateLunarSolarOffsetByMonth lMonth
-      leapOffset = getLeapMonthOffset a11 timeZone
+      leapOffset = calculateLeapMonthOffset a11 timeZone
       (a11, b11) =
         calculateLunarFactorsFromLunarDate (lDay, lMonth, lYear, timeZone)
 
-convertLunarToSolar :: (Int, Int, Int, Int) -> (Int, Int, Int)
-convertLunarToSolar (lDay, lMonth, lYear, timeZone) =
-  jdToDate (monthStart + lDay - 1)
+calculateDateFromLunarDate :: (Int, Int, Int, Int) -> (Int, Int, Int)
+calculateDateFromLunarDate (lDay, lMonth, lYear, timeZone) =
+  calculateDateFromJuliusDay (lMonthStartAt + lDay - 1)
     where
       (a11, b11) =
         calculateLunarFactorsFromLunarDate (lDay, lMonth, lYear, timeZone)
-      k = floor (0.5 + (fromIntegral a11 - 2415021.076998695) / 29.530588853)
+      numberOfMonths = floor (0.5 + (fromIntegral a11 - 2415021.076998695) / 29.530588853)
       offset = calculateLunarSolarOffset (lDay, lMonth, lYear, timeZone)
-      monthStart = getNewMoonDay (k + offset) timeZone
+      lMonthStartAt = calculateNewMoonDay (numberOfMonths + offset) timeZone
