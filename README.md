@@ -2,6 +2,8 @@
 
 A Lunar calendar calculator library written in Haskell.
 
+Another version which is written in JavaScript https://github.com/codeaholicguy/amlich.js/.
+
 ### Usage
 
 ```hs
