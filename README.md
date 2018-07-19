@@ -1,4 +1,5 @@
-# Halunar
+<p align="center"><img src="logo/horizontal.png" alt="halunar" height="100px"></p>
+
 
 A Lunar calendar calculator library written in Haskell.
 
